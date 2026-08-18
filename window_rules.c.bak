@@ -1,0 +1,192 @@
+#include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/types/wlr_seat.h>
+#include <wlr/types/wlr_keyboard.h>
+#include "server.h"
+#include <wlr/types/wlr_xdg_decoration_v1.h>
+
+void focus_view(struct tiny_view *view, struct wlr_surface *surface) {
+    // SAFETY CHECK #1: If seat or view is missing, abort!
+    if (!view || !view->server || !view->server->seat || !surface) {
+        return;
+    }
+
+    struct tiny_server *server = view->server;
+    struct wlr_seat *seat = server->seat;
+    
+    // SAFETY CHECK #2: Ensure toplevel exists before activating
+    if (!view->xdg_toplevel) return;
+
+    struct wlr_surface *prev_surface = seat->keyboard_state.focused_surface;
+    if (prev_surface == surface) return; 
+
+    // 1. De-activate previous
+    if (prev_surface) {
+        struct wlr_xdg_surface *prev_xdg = wlr_xdg_surface_try_from_wlr_surface(prev_surface);
+        if (prev_xdg && prev_xdg->role == WLR_XDG_SURFACE_ROLE_TOPLEVEL) {
+            wlr_xdg_toplevel_set_activated(prev_xdg->toplevel, false);
+        }
+    }
+
+    // 2. Visual focus
+    wlr_scene_node_raise_to_top(&view->scene_tree->node);
+    
+    // Only move the list link if it's already part of a list
+    if (view->link.next != NULL) {
+        wl_list_remove(&view->link);
+        wl_list_insert(&server->views, &view->link);
+    }
+
+    // 3. Activate new toplevel
+    wlr_xdg_toplevel_set_activated(view->xdg_toplevel, true);
+
+    // 4. Keyboard focus
+    struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(seat);
+    // Use the seat's built-in keyboard notify which is safer
+    wlr_seat_keyboard_notify_enter(seat, surface, NULL, 0, NULL);
+    
+    if (keyboard) {
+        wlr_seat_keyboard_send_modifiers(seat, &keyboard->modifiers);
+    }
+
+
+
+
+    // 1. Hide the border of the OLD view
+    struct tiny_view *old_view;
+    wl_list_for_each(old_view, &view->server->views, link) {
+        if (old_view->border) {
+            wlr_scene_node_set_enabled(&old_view->border->node, false);
+        }
+    }
+
+    // 2. Show the border for the NEW view
+    if (view->border) {
+        wlr_scene_node_set_enabled(&view->border->node, true);
+    }
+}
+
+void server_new_decoration(struct wl_listener *listener, void *data) {
+    struct wlr_xdg_toplevel_decoration_v1 *decoration = data;
+    // This tells the app: "I (the server) will handle decorations. You draw nothing."
+    wlr_xdg_toplevel_decoration_v1_set_mode(decoration, 
+        WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+}
+
+struct tiny_view* find_view_from_surface(struct tiny_server *server, struct wlr_surface *surface) {
+    struct tiny_view *view;
+    wl_list_for_each(view, &server->views, link) {
+        if (view->xdg_surface->surface == surface) {
+            return view;
+        }
+    }
+    return NULL;
+}
+
+void event_mouse_hover_over_client(struct tiny_server *server) {
+    double sx, sy;
+    struct wlr_scene_node *node = wlr_scene_node_at(
+        &server->scene->tree.node, server->cursor->x, server->cursor->y, &sx, &sy);
+
+    struct tiny_view *hovered_view = NULL;
+
+    if (node) {
+        // Walk up the tree to find the node we tagged with our view data
+        struct wlr_scene_tree *tree = node->parent;
+        while (tree != NULL) {
+            if (tree->node.data != NULL) {
+                hovered_view = tree->node.data;
+                break;
+            }
+            tree = tree->node.parent;
+        }
+    }
+
+    server->mouse_over_view = hovered_view;
+    if (hovered_view) {
+        server->mouse_over_client_surface = hovered_view->xdg_surface->surface;
+    } else {
+        server->mouse_over_client_surface = NULL;
+    }
+}
+
+
+
+void hyprland_style_tiling(struct tiny_view *new_view) {
+    struct tiny_server *server = new_view->server;
+    int32_t GAP = 10;
+    int32_t MIN_SIZE = 60; // Don't let windows get unusable
+
+    // Case A: First window - Fill the screen
+   if (wl_list_empty(&server->views)) {
+    // Use x and y from usable_area (y will be 30 if Waybar is there)
+    new_view->x = server->usable_screen_area.x + GAP;
+    new_view->y = server->usable_screen_area.y + GAP; 
+    
+    new_view->width = server->usable_screen_area.width - (GAP * 2);
+    new_view->height = server->usable_screen_area.height - (GAP * 2);
+    
+    wl_list_insert(&server->views, &new_view->link);
+    apply_tiling_to_view(new_view);
+    return;
+    }
+    // Case B: Split the hovered view (the Hyprland way)
+    struct tiny_view *target = server->mouse_over_view;
+    
+    // Fallback: If mouse isn't over a window, split the most recently focused one
+    if (!target) {
+        target = wl_container_of(server->views.next, target, link);
+    }
+
+    if (target && target != new_view) {
+        int32_t tw = target->width;
+        int32_t th = target->height;
+        int32_t tx = target->x;
+        int32_t ty = target->y;
+
+        if (tw >= th) { // Vertical Split (Side-by-side)
+            int32_t half_w = (tw - GAP) / 2;
+            if (half_w < MIN_SIZE) return; // Not enough room
+
+            target->width = half_w;
+            
+            new_view->width = half_w;
+            new_view->height = th;
+            new_view->x = tx + half_w + GAP;
+            new_view->y = ty;
+        } else { // Horizontal Split (Stacked)
+            int32_t half_h = (th - GAP) / 2;
+            if (half_h < MIN_SIZE) return;
+
+            target->height = half_h;
+            
+            new_view->width = tw;
+            new_view->height = half_h;
+            new_view->x = tx;
+            new_view->y = ty + half_h + GAP;
+        }
+        
+        new_view->sibling = target;
+        target->sibling = new_view;
+        // Add to our list
+        wl_list_insert(&server->views, &new_view->link);
+
+        // Apply changes to both
+        apply_tiling_to_view(target);
+        apply_tiling_to_view(new_view);
+    }
+}
+
+// Helper to actually talk to Wayland/wlroots
+void apply_tiling_to_view(struct tiny_view *view) {
+    wlr_scene_node_set_position(&view->scene_tree->node, view->x, view->y);
+    wlr_xdg_toplevel_set_size(view->xdg_toplevel, view->width, view->height);
+    wlr_xdg_surface_schedule_configure(view->xdg_surface);
+}
+
+
+    
+
+
+
+
+
