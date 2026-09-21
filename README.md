@@ -24,7 +24,7 @@
 
 ### 💻 Client/Window Management
 
-* **Client Open / Close:** Graceful spawning and termination of Wayland surfaces.
+* **Client Open / Close:** Spawning and termination of Wayland surfaces.
   <p align="center">
     <img src="./readmeAssets/F2A.gif" alt="Client Open and Close Demo" width="800" />
   </p>
@@ -39,26 +39,24 @@
     <img src="./readmeAssets/F6A.gif" alt="Window Tiling Demo" width="800" />
   </p>
 
-* **Window Position Switch:** Swapping client positions dynamically across the grid.
+* **Window Position Switch:** Swapping client positions across the grid.
   <p align="center">
     <img src="./readmeAssets/F7A.gif" alt="Window Position Switch Demo" width="800" />
   </p>
 
-* **Window Resizing:** Real-time surface surface allocation and scaling.
+* **Window Resizing:** surface redrawing.
   <p align="center">
     <img src="./readmeAssets/F8A.gif" alt="Window Resize Demo" width="800" />
   </p>
 
----
-
 ### 🖱️ Input Handling
 
-* **Mouse Cursor Tracking:** Smooth pointer hardware integration and rendering.
+* **Mouse Cursor Tracking:** Pointer is rendered.
   <p align="center">
     <img src="./readmeAssets/F3A.gif" alt="Mouse Cursor Demo" width="800" />
   </p>
 
-* **Keyboard Functions:** Routing key events directly to focused clients.
+* **Keyboard Functions:** Basic Keyboard logic implementation.
   <p align="center">
     <img src="./readmeAssets/F5A.gif" alt="Keyboard Function Demo" width="800" />
   </p>
