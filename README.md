@@ -22,7 +22,7 @@
 
 ## 🌟 Key Features
 
-### 💻 Client & Window Management
+### 💻 Client/Window Management
 
 * **Client Open / Close:** Graceful spawning and termination of Wayland surfaces.
   <p align="center">
