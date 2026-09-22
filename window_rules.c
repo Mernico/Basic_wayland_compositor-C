@@ -144,11 +144,6 @@ void apply_tiling_to_view(struct tiny_view *view) {
 
 /* =========================================================================
  * HYPRLAND-STYLE TILING  (initial placement)
- *
- * Split direction is decided by the SCREEN aspect ratio, not the target
- * window's current size.  This prevents the "stripes" bug where every
- * window opened into the narrow right half gets split horizontally because
- * its height > width.
  * ========================================================================= */
 
 void hyprland_style_tiling(struct tiny_view *new_view) {
@@ -177,12 +172,7 @@ void hyprland_style_tiling(struct tiny_view *new_view) {
     int32_t tw = target->width,  th = target->height;
     int32_t tx = target->x,      ty = target->y;
 
-    /* Decide split axis using the SCREEN's aspect ratio, not the target's.
-     * On a landscape screen we always prefer vertical splits (side-by-side)
-     * until a column gets taller than wide, then we switch to horizontal.
-     * Rule: split vertically when the target is wider than the screen is tall,
-     * otherwise split horizontally.  This keeps the layout sane as windows
-     * accumulate without degenerating into stripes. */
+    
     bool split_vertically = (tw >= th);
 
     if (split_vertically) {
