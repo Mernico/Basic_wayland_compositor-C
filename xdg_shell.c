@@ -27,12 +27,7 @@ static void xdg_toplevel_map(struct wl_listener *listener, void *data) {
 static void xdg_toplevel_unmap(struct wl_listener *listener, void *data) {
     struct tiny_view *view = wl_container_of(listener, view, unmap);
 
-    /* BUG FIX: The old check was wrong.
-     *   view->link.next == &view->link  means the list node points to
-     *   itself, which is the wl_list_init() "empty/detached" state.
-     *   We should bail out in THAT case — if it's already detached there
-     *   is nothing to unmap.  Using NULL is wrong because wl_list never
-     *   leaves a pointer NULL in normal operation. */
+    
     if (view->link.next == &view->link) return;
 
     /* Clear focused_view before removing so no dangling pointer is left */
@@ -102,11 +97,7 @@ static void xdg_toplevel_destroy(struct wl_listener *listener, void *data) {
     if (view->server->mouse_over_view == view)
         view->server->mouse_over_view = NULL;
 
-    /* Disconnect all listeners.
-     * BUG FIX: wl_list_remove on an already-removed (self-pointing) link
-     * is safe because wl_list_init sets next=prev=self, and wl_list_remove
-     * on a self-pointing node is a no-op in practice — but we guard
-     * explicitly to be clear about intent. */
+   
     wl_list_remove(&view->map.link);
     wl_list_remove(&view->unmap.link);
     wl_list_remove(&view->destroy.link);
