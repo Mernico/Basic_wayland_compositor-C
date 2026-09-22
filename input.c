@@ -56,31 +56,12 @@ void server_cursor_motion_absolute(struct wl_listener *listener, void *data) {
     }
 }
 
-/* =========================================================================
- * KEYBOARD — key event
- *
- * THE MAIN BUG FIX:
- * The old code forwarded raw key events to the seat but never told it about
- * modifier state (Shift, CapsLock, Ctrl, Alt, …).  XKB tracks modifiers
- * internally in wlr_keyboard, but the seat only knows about them if you
- * explicitly call wlr_seat_keyboard_notify_modifiers() — which requires a
- * separate "modifiers" listener on wlr_keyboard->events.modifiers.
- *
- * Without that listener:
- *   - Shift is ignored → lowercase only
- *   - CapsLock has no effect
- *   - Ctrl/Alt shortcuts don't work in apps
- *   - Compose sequences never fire
- * ========================================================================= */
+
 
 
 
 /* keyboard_handle_key is defined in keybinds.c */
 
-/* THE MISSING LISTENER:
- * This is called every time a modifier key changes (Shift pressed/released,
- * CapsLock toggled, etc.).  Without it, the seat's modifier state is never
- * updated and apps receive keys with no modifier information at all. */
 static void keyboard_handle_modifiers(struct wl_listener *listener, void *data) {
     (void)data; /* modifier state is read from wlr_keyboard directly */
     struct tiny_keyboard *keyboard =
