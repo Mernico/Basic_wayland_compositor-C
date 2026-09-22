@@ -3,7 +3,7 @@
   <h1>Basic Wayland Compositor</h1>
 
   <p>
-    <strong>A lightweight, C-based Wayland compositor prototype built as part of a Bachelor's thesis.</strong>
+    <strong>A lightweight, C-based Wayland compositor prototype built as part of my Bachelor's thesis.</strong>
   </p>
 
   <p>
