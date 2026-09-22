@@ -24,7 +24,7 @@
 
 ### 💻 Client/Window Management
 
-* **Client Open / Close:** Spawning and termination of Wayland surfaces.
+* **Client Open / Close:** Spawning and termination of clients.
   <p align="center">
     <img src="./readmeAssets/F2A.gif" alt="Client Open and Close Demo" width="800" />
   </p>
